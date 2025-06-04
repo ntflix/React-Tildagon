@@ -8,4 +8,7 @@ class Focusable:
     def update(self, delta: int) -> bool:
         return True
 
+    def close(self) -> None:
+        pass
+
     async def start(self) -> None: ...

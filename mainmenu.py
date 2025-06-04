@@ -23,9 +23,9 @@ class MainMenu(Focusable):
 
     def draw(self, ctx):
         # background
-        ctx.radial_gradient(0, 0, 120, 0, 0, 50)
-        ctx.add_stop(0, (0.25, 0.25, 0.25), 1)
-        ctx.add_stop(1, (0.5, 0.5, 0.5), 1)
+        ctx.radial_gradient(0, 0, 70, 0, 0, 55)
+        ctx.add_stop(0, (0.45, 0.45, 0.45), 1)
+        ctx.add_stop(1, (0.25, 0.25, 0.25), 1)
         ctx.rectangle(-120, -120, 240, 240).fill()  # .rgb(0.25, 0.25, 0.25)
         ctx.rgb(0.5, 0.5, 0.5).arc(0, 0, 55, 0, 2 * math.pi, True).fill()
 

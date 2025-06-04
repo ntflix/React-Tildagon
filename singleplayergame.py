@@ -1,13 +1,9 @@
 import asyncio
-from typing import TYPE_CHECKING
 import random
 import math
-
-from .focusable import Focusable
 import utime
 
-if TYPE_CHECKING:
-    from app import Reactz  # Avoid circular import issues
+from .focusable import Focusable
 
 
 class SinglePlayerReactionGame(Focusable):
@@ -21,7 +17,12 @@ class SinglePlayerReactionGame(Focusable):
 
     def handle_button(self, button: str) -> None:
         if button in ["CONFIRM", "RIGHT"]:
-            self.on_reaction()
+            if self.reacted_in is None:
+                self.on_reaction()
+            elif self.reacted_in:
+                # reset game
+                print("Reaction not set yet! Resetting game.")
+                self.restart()
 
     async def start(self):
         self.reacted_in = None
@@ -33,6 +34,14 @@ class SinglePlayerReactionGame(Focusable):
         self.start_ts = utime.ticks_ms()
         self.react_set = True
         print("Go!")
+
+    def restart(self):
+        print("Restarting game...")
+        self.reacted_in = None
+        self.react_set = False
+        self.start_ts = 0
+        self.random_delay_ms = 0
+        asyncio.create_task(self.start())
 
     def on_reaction(self):
         print("Reaction received!")

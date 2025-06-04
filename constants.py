@@ -51,6 +51,7 @@ brief_funny_waiting_messages = [
     "are you there?",
     "waiting for you…",
     "patience now…",
+    "r u still there?",
     "come on…",
     "giving up…",
     "bored now",

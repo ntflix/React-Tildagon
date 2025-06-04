@@ -12,6 +12,7 @@ from .singleplayergame import SinglePlayerReactionGame
 
 class Reactz(App):
     focus: Focusable | None = None
+    menuTask: asyncio.Task | None = None
 
     def __init__(self):
         self.button_states = Buttons(self)
@@ -36,9 +37,9 @@ class Reactz(App):
                 if self.focus and isinstance(self.focus, MainMenu):
                     # host a new reaction game
                     self.focus = MultiPlayerReactionGame(gameType=GameType.HOSTING)
-                    asyncio.create_task(self.focus.start())
+                    self.menuTask = asyncio.create_task(self.focus.start())
                 elif self.focus:
-                    self.focus.handle_button("RIGHT")
+                    self.focus.handle_button("CANCEL")
 
             if self.button_states.get(BUTTON_TYPES["LEFT"]):
                 if self.focus and isinstance(self.focus, MainMenu):
@@ -47,6 +48,9 @@ class Reactz(App):
                     self.minimise()
                 elif self.focus:
                     # if we are in a game, return to the main menu
+                    self.focus.close()
+                    if self.menuTask:
+                        self.menuTask.cancel()
                     self.focus = MainMenu()
                     asyncio.create_task(self.focus.start())
 
@@ -54,7 +58,7 @@ class Reactz(App):
                 if self.focus and isinstance(self.focus, MainMenu):
                     # join an existing reaction game
                     self.focus = MultiPlayerReactionGame(gameType=GameType.JOINING)
-                    asyncio.create_task(self.focus.start())
+                    self.menuTask = asyncio.create_task(self.focus.start())
                 elif self.focus:
                     self.focus.handle_button("RIGHT")
 
@@ -64,7 +68,7 @@ class Reactz(App):
 
             elif self.button_states.get(BUTTON_TYPES["UP"]):
                 if self.focus:
-                    self.focus.handle_button("RIGHT")
+                    self.focus.handle_button("UP")
 
             elif self.button_states.get(BUTTON_TYPES["DOWN"]):
                 if self.focus and isinstance(self.focus, MainMenu):
@@ -96,6 +100,9 @@ class Reactz(App):
     def update(self, delta: int):
         if self.focus:
             self.focus.update(delta)
+        else:
+            self.focus = MainMenu()
+            asyncio.create_task(self.focus.start())
 
 
 __app_export__ = Reactz
