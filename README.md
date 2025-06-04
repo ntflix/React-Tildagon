@@ -1,5 +1,7 @@
 # Reactz (multiplayer)
 
+> A PoC multiplayer game for the [Tildagon](https://tildagon.badge.emfcamp.org/).
+
 A single or multiplayer game where the player waits a random time and then has to react as quickly as possible to a visual cue (like a color change or a button appearing).
 
 The time difference between the event and the player's reaction time is calculated. The lower the time difference, the better the score.
