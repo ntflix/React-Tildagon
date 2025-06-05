@@ -106,7 +106,7 @@ class Comms:
             join_ack = self.receive(1000)
             if join_ack:
                 mac, msg = join_ack
-                if msg.startswith("REACTZ JOINED "):
+                if msg.startswith("JOINED "):
                     print(f"Joined room {room.name} successfully from {mac}")
                     on_join()
                 else:
@@ -124,24 +124,40 @@ class Comms:
 
     def send_react_start(self, room: Room, delay_ms: int) -> None:
         """Host → everyone: when to start"""
-        self.broadcast(f"REACTZ START {room.name} {delay_ms}")
+        self.broadcast(f"START {room.name} {delay_ms}")
 
     def send_react_time(self, room: Room, time_ms: int) -> None:
         """Client → host: your reaction time"""
-        self.send(room.host_mac, f"REACTZ TIME {room.name} {time_ms}")
+        self.send(room.host_mac, f"TIME {room.name} {time_ms}")
 
     def send_results(
         self, player_mac: bytes, room: Room, results: dict[bytes, int]
     ) -> None:
         """Host → each player: final scoreboard"""
         payload = ",".join(f"{mac.hex()}:{t}" for mac, t in results.items())
-        self.send(player_mac, f"REACTZ RESULT {room.name} {payload}")
+        self.send(player_mac, f"RESULT {room.name} {payload}")
 
-    def receive_react(self, timeout: int = 500) -> tuple[bytes, str] | None:
+    def receive_react(self, room: Room, timeout: int = 500) -> int | None:
         """Filter only REACTZ-prefixed messages"""
         incoming = self.receive(timeout)
         if incoming:
             mac, msg = incoming
-            if msg.startswith("REACTZ "):
+            msg = msg.split(" ", 1)
+            print(f"Received message from {mac.hex()}: {msg}")
+            if msg[1].startswith(room.name):
+                msg = msg[1][len(room.name) + 1 :]  # Strip room name and space
+                return int(msg)
+        return None
+
+    def receive_scores(self, timeout: int = 500) -> tuple[bytes, str] | None:
+        """Receive scores from host or players.
+        Returns:
+            tuple[bytes, str] | None: A tuple containing the sender's MAC address and the message string,
+            or None if no message was received within the timeout.
+        """
+        incoming = self.receive(timeout)
+        if incoming:
+            mac, msg = incoming
+            if msg.startswith("TIME ") or msg.startswith("RESULT "):
                 return mac, msg
         return None

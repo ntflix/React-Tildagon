@@ -65,7 +65,7 @@ class MultiPlayerReactionGameSetup(Focusable):
                     print("Cancelling joining task")
                     self.joining_task.cancel()
                 self.joining_task = None
-                self.start_multiplayer_game()
+                self.start_multiplayer_game_as_host()
 
     async def start(self):
         if self.joining_task:
@@ -81,13 +81,14 @@ class MultiPlayerReactionGameSetup(Focusable):
             await self.listen_for_rooms()
             # self.joining_task = asyncio.create_task(self.listen_for_rooms())
 
-    def start_multiplayer_game(self) -> None:
+    def start_multiplayer_game_as_host(self) -> None:
         assert self.room is not None, "Room must be initialized before starting game"
         print("Starting game with players:", self.room.players)
         self.gameType = GameType.PLAYINGMULTIPLAYER
         self.game = MultiPlayerReactionGameGame(
             comms=self.comms,
             room=self.room,
+            is_host=True,
         )
         asyncio.create_task(self.game.start())
 
@@ -141,7 +142,13 @@ class MultiPlayerReactionGameSetup(Focusable):
         assert self.room is not None
         print(f"Joined the room {self.room.name}")
         self.accent = (0.8, 0, 0.8)
-        self.gameType = GameType.JOINED
+        self.gameType = GameType.PLAYINGMULTIPLAYER
+        self.game = MultiPlayerReactionGameGame(
+            comms=self.comms,
+            room=self.room,
+            is_host=False,
+        )
+        asyncio.create_task(self.game.start())
 
     def add_player_to_room(self, player_mac: bytes) -> None:
         if self.room:

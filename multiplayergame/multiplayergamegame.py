@@ -28,11 +28,15 @@ class MultiPlayerReactionGameGame(Focusable):
         self,
         comms: Comms,
         room: Room,
+        is_host: bool = False,
     ):
         self.comms = comms
         self.room = room
         self.multiplayer = bool(comms and room)
-        self.is_host = self.multiplayer and (self.comms.mac == self.room.host_mac)
+        if is_host and not self.multiplayer:
+            raise ValueError("Cannot be host without a multiplayer setup.")
+
+        self.is_host = is_host
         self.results = {}
         self.reacted_in = None
         self.react_set = False
@@ -54,23 +58,30 @@ class MultiPlayerReactionGameGame(Focusable):
         self.cleared_background = False
 
         if self.multiplayer:
+            print(
+                f"line 57: Starting multiplayer game in room {self.room.name} as {'host' if self.is_host else 'client'}"
+            )
             if self.is_host:
                 # Host picks & broadcasts delay
-                self.random_delay_ms = random.randint(700, 1000)
+                self.random_delay_ms = random.randint(1000, 5000)
                 self.comms.send_react_start(self.room, self.random_delay_ms)
+                print(f"Host set random delay: {self.random_delay_ms}ms")
                 await asyncio.sleep(self.random_delay_ms / 1000)
             else:
                 # Client waits for host START
-                while True:
-                    incoming = self.comms.receive_react(1000)
-                    if incoming:
-                        _, msg = incoming
-                        parts = msg.split()
-                        if parts[1] == "START" and parts[2] == self.room.name:
-                            self.random_delay_ms = int(parts[3])
-                            await asyncio.sleep(self.random_delay_ms / 1000)
-                            break
-                    await asyncio.sleep(0.05)
+                incoming = self.comms.receive_react(room=self.room, timeout=20000)
+                if incoming:
+                    print(
+                        f"Received REACT START from host in {self.room.name} with time {incoming}ms"
+                    )
+                    self.random_delay_ms = incoming
+                    await asyncio.sleep(self.random_delay_ms / 1000)
+                else:
+                    print(
+                        f"Failed to receive START from host in room {self.room.name}. Restarting game."
+                    )
+                    self.restart()
+                    return
             # mark go-time
             self.start_ts = utime.ticks_ms()
             self.react_set = True
@@ -111,7 +122,7 @@ class MultiPlayerReactionGameGame(Focusable):
 
     def update(self, delta: int) -> bool:
         if self.multiplayer:
-            incoming = self.comms.receive_react(100)
+            incoming = self.comms.receive_scores(1500)
             if incoming:
                 sender, msg = incoming
                 parts = msg.split()
@@ -141,13 +152,18 @@ class MultiPlayerReactionGameGame(Focusable):
             clear_background(ctx)
             self.cleared_background = True
 
+        print("drawing")
         if self.react_set:
+            print("drawing react set")
             ctx.rgb(1, 0, 0).arc(0, 0, 60, 0, 2 * math.pi, True).fill()
         else:
+            print("drawing react set not set")
             if self.reacted_in is not None:
+                print("drawing reacted in")
                 ctx.rgb(0, 0.6, 0).arc(0, 0, 60, 0, 2 * math.pi, True).fill()
                 ctx.rgb(1, 1, 1).move_to(0, 0).text(f"{self.reacted_in}ms")
             else:
+                print("drawing reacted in not set")
                 ctx.rgb(0.5, 0, 0.5).arc(0, 0, 40, 0, 2 * math.pi, True).fill()
 
         if self.multiplayer and self.results:
