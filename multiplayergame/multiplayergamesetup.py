@@ -122,7 +122,6 @@ class MultiPlayerReactionGameSetup(Focusable):
         if msg and msg.startswith("HOST "):
             room_name = msg[5:]  # Extract room name after "HOST "
             print(f"Found room: {room_name} from {host}")
-            # Here you could add logic to display the room name or join it
             self.searching_message = "Found room!"
             self.room = Room(name=room_name, host_mac=host)
 
@@ -141,7 +140,6 @@ class MultiPlayerReactionGameSetup(Focusable):
     def on_joined(self) -> None:
         assert self.room is not None
         print(f"Joined the room {self.room.name}")
-        self.accent = (0.8, 0, 0.8)
         self.gameType = GameType.PLAYINGMULTIPLAYER
         self.game = MultiPlayerReactionGameGame(
             comms=self.comms,

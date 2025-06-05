@@ -144,6 +144,9 @@ class Comms:
             mac, msg = incoming
             msg = msg.split(" ", 1)
             print(f"Received message from {mac.hex()}: {msg}")
+            if msg[0] not in ["START"]:
+                print(f"Message {msg[0]} is not a valid reaction message. Ignoring.")
+                return None
             if msg[1].startswith(room.name):
                 msg = msg[1][len(room.name) + 1 :]  # Strip room name and space
                 return int(msg)

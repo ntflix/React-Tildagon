@@ -5,11 +5,13 @@ import asyncio
 from app_components import clear_background
 
 from ..comms import Comms
+from ..drawing import Drawing
 from ..focusable import Focusable
 from .room import Room
 
 
 class MultiPlayerReactionGameGame(Focusable):
+    drawing: Drawing = Drawing()
     random_delay_ms: int
     react_set: bool
     start_ts: int
@@ -23,6 +25,16 @@ class MultiPlayerReactionGameGame(Focusable):
     react_set = False
     start_ts = 0
     cleared_background = False
+    waiting_for_host_to_start = True
+
+    @property
+    def listen_for_scores(self) -> bool:
+        """Whether to listen for incoming scores from other players."""
+        if (
+            self.reacted_in and not self.react_set
+        ):  # If we have reacted and the game is not waiting for a reaction
+            return True
+        return False
 
     def __init__(
         self,
@@ -54,6 +66,7 @@ class MultiPlayerReactionGameGame(Focusable):
 
     async def start(self):
         self.results.clear()
+        self.waiting_for_host_to_start = True
         self.reacted_in = None
         self.cleared_background = False
 
@@ -71,6 +84,7 @@ class MultiPlayerReactionGameGame(Focusable):
                 # Client waits for host START
                 incoming = self.comms.receive_react(room=self.room, timeout=20000)
                 if incoming:
+                    self.waiting_for_host_to_start = False
                     print(
                         f"Received REACT START from host in {self.room.name} with time {incoming}ms"
                     )
@@ -121,7 +135,7 @@ class MultiPlayerReactionGameGame(Focusable):
                 self.comms.send_react_time(self.room, elapsed)
 
     def update(self, delta: int) -> bool:
-        if self.multiplayer:
+        if self.listen_for_scores:
             incoming = self.comms.receive_scores(1500)
             if incoming:
                 sender, msg = incoming
@@ -152,18 +166,13 @@ class MultiPlayerReactionGameGame(Focusable):
             clear_background(ctx)
             self.cleared_background = True
 
-        print("drawing")
         if self.react_set:
-            print("drawing react set")
             ctx.rgb(1, 0, 0).arc(0, 0, 60, 0, 2 * math.pi, True).fill()
         else:
-            print("drawing react set not set")
             if self.reacted_in is not None:
-                print("drawing reacted in")
                 ctx.rgb(0, 0.6, 0).arc(0, 0, 60, 0, 2 * math.pi, True).fill()
                 ctx.rgb(1, 1, 1).move_to(0, 0).text(f"{self.reacted_in}ms")
             else:
-                print("drawing reacted in not set")
                 ctx.rgb(0.5, 0, 0.5).arc(0, 0, 40, 0, 2 * math.pi, True).fill()
 
         if self.multiplayer and self.results:
@@ -173,3 +182,21 @@ class MultiPlayerReactionGameGame(Focusable):
                 ctx.font_size = 18
                 ctx.rgb(1, 1, 1).move_to(-60, y).text(f"{prefix}: {t}ms")
                 y += 24
+
+        elif self.waiting_for_host_to_start and not self.is_host:
+            self.drawing.draw_radial_box(
+                ctx,
+                base_color=(0, 0.4, 0),
+                circle_size=80,
+                box_size=120,
+                custom_accent_color=(0.8, 0, 0.8),
+            )
+
+            ctx.font_size = 22
+            ctx.rgb(1, 1, 1).move_to(0, -30).text(f"you have joined")
+            ctx.font_size = 40 * (1 / 100)
+            assert self.room is not None
+            ctx.rgb(1, 1, 1).move_to(0, 0).text(self.room.name)
+            ctx.font_size = 22
+            ctx.rgb(1, 1, 1).move_to(0, 30).text("waiting for host to start")
+            return
