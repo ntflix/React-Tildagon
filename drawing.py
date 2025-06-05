@@ -51,7 +51,12 @@ class Drawing:
         ctx.restore()
 
     def draw_radial_box(
-        self, ctx, base_color: tuple, circle_size: float = 80, box_size: float = 120
+        self,
+        ctx,
+        base_color: tuple,
+        circle_size: float = 80,
+        box_size: float = 120,
+        custom_accent_color: tuple[float, float, float] | None = None,
     ):
         """
         Draws a square background filled with a radial gradient,
@@ -62,8 +67,17 @@ class Drawing:
         box_size: half-width/height of the square
         """
         # generate darker stops
-        stop0 = tuple(float(max(0, c - 0.1)) for c in base_color)
-        stop1 = tuple(float(max(0, c - 0.2)) for c in base_color)
+        stop0: tuple[float, float, float] | None = custom_accent_color
+        if stop0 is None:
+            # default to a darker version of the base color
+            stop0 = tuple(float(max(0, c - 0.1)) for c in base_color)
+        else:
+            # ensure custom accent color is within bounds
+            stop0 = tuple(min(max(0, c), 1) for c in stop0)
+
+        # stop1 must interpolate between stop0 and base_color
+        darker_base_color = tuple(float(max(0, c - 0.2)) for c in base_color)
+        stop1 = tuple((c0 + c1) / 2 for c0, c1 in zip(stop0, darker_base_color))
 
         # radial gradient: from slightly outside circle back into it
         ctx.radial_gradient(0, 0, circle_size + 10, 0, 0, circle_size)

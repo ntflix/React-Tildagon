@@ -2,6 +2,7 @@ import asyncio
 import random
 import math
 import utime
+from app_components import clear_background
 
 from .focusable import Focusable
 
@@ -11,12 +12,13 @@ class SinglePlayerReactionGame(Focusable):
     react_set: bool = False
     start_ts: int = 0
     reacted_in: str | None = None
+    cleared_background: bool = False
 
     def __init__(self):
         pass
 
     def handle_button(self, button: str) -> None:
-        if button in ["CONFIRM", "RIGHT"]:
+        if button in ["CONFIRM", "RIGHT", "DOWN"]:
             if self.reacted_in is None:
                 self.on_reaction()
             elif self.reacted_in:
@@ -37,6 +39,7 @@ class SinglePlayerReactionGame(Focusable):
 
     def restart(self):
         print("Restarting game...")
+        self.cleared_background = False
         self.reacted_in = None
         self.react_set = False
         self.start_ts = 0
@@ -57,6 +60,10 @@ class SinglePlayerReactionGame(Focusable):
             print("Reaction not set yet!")
 
     def draw(self, ctx) -> None:
+        if not self.cleared_background:
+            clear_background(ctx)
+            self.cleared_background = True
+
         if self.react_set:
             ctx.rgb(1, 0, 0).arc(0, 0, 60, 0, 2 * math.pi, True).fill()
         else:
