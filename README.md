@@ -18,7 +18,7 @@ On multiplayer, the player with the lowest time difference wins.
 
 ## Future
 
-- Have 'game rooms' set up ("would you like to join [randomly generated name] game") so multiple Tildagons in the same vicinity can have separate games
-- Have a 'game lobby' where players can join and wait for others to join
-  - A host who can create a game room, start the game etc.
-- Have a 'game history' where players can see their previous scores
+- [x] ~~Have 'game rooms' set up ("would you like to join [randomly generated name] game") so multiple Tildagons in the same vicinity can have separate games~~
+- [x] ~~Have a 'game lobby' where players can join and wait for others to join~~
+  - ~~A host who can create a game room, start the game etc.~~
+- [ ] Have a 'game history' where players can see their previous scores
