@@ -22,3 +22,5 @@ On multiplayer, the player with the lowest time difference wins.
 - [x] ~~Have a 'game lobby' where players can join and wait for others to join~~
   - ~~A host who can create a game room, start the game etc.~~
 - [ ] Have a 'game history' where players can see their previous scores
+
+https://github.com/user-attachments/assets/f87ba258-3989-4452-9a77-2c087711478d
