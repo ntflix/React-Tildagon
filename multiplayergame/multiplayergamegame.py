@@ -13,7 +13,7 @@ from .room import Room
 class MultiPlayerReactionGameGame(Focusable):
     drawing: Drawing = Drawing()
     random_delay_ms: int
-    react_set: bool
+    react_set: bool = False
     start_ts: int
     reacted_in: str | None
     cleared_background: bool
@@ -22,19 +22,38 @@ class MultiPlayerReactionGameGame(Focusable):
     multiplayer: bool
     is_host: bool
     results: dict[bytes, int]
-    react_set = False
     start_ts = 0
     cleared_background = False
     waiting_for_host_to_start = True
 
-    @property
-    def listen_for_scores(self) -> bool:
-        """Whether to listen for incoming scores from other players."""
-        if (
-            self.reacted_in and not self.react_set
-        ):  # If we have reacted and the game is not waiting for a reaction
-            return True
-        return False
+    async def listen_for_scores(self) -> None:
+        print("Listening for scores...")
+        incoming = await self.comms.receive_scores()
+        if incoming:
+            print("Received scores from host or players.")
+            sender, msg = incoming
+            parts = msg.split()
+            tag = parts[0]
+            print(tag, parts)
+            if tag == "TIME" and self.is_host:
+                print(f"Received TIME from {sender.hex()}: {parts[3]}")
+                # Host collects everyone’s TIME
+                t = int(parts[3])
+                self.results[sender] = t
+                # once everyone (host + players) have sent
+                expected = len(self.room.players) + 1
+                if len(self.results) == expected:
+                    # broadcast final scoreboard
+                    self.comms.send_results(self.room, self.results)
+
+            elif tag == "RESULT" and not self.is_host:
+                # Client receives final RESULTS
+                raw = parts[3]
+                for pair in raw.split(","):
+                    mac_hex, tstr = pair.split(":")
+                    self.results[bytes.fromhex(mac_hex)] = int(tstr)
+        else:
+            print("No scores received")
 
     def __init__(
         self,
@@ -44,7 +63,8 @@ class MultiPlayerReactionGameGame(Focusable):
     ):
         self.comms = comms
         self.room = room
-        self.multiplayer = bool(comms and room)
+        # self.multiplayer = bool(comms and room)
+        self.multiplayer = True
         if is_host and not self.multiplayer:
             raise ValueError("Cannot be host without a multiplayer setup.")
 
@@ -57,6 +77,7 @@ class MultiPlayerReactionGameGame(Focusable):
 
     def handle_button(self, button: str) -> None:
         if button in ["CONFIRM", "RIGHT", "DOWN"]:
+            print(f"Button {button} pressed in game. reacted_in is {self.reacted_in}")
             if self.reacted_in is None:
                 self.on_reaction()
             elif self.reacted_in:
@@ -77,18 +98,20 @@ class MultiPlayerReactionGameGame(Focusable):
             if self.is_host:
                 # Host picks & broadcasts delay
                 self.random_delay_ms = random.randint(1000, 5000)
-                self.comms.send_react_start(self.room, self.random_delay_ms)
+                asyncio.create_task(self.listen_for_scores())
+                await self.comms.send_react_start(self.room, self.random_delay_ms)
                 print(f"Host set random delay: {self.random_delay_ms}ms")
                 await asyncio.sleep(self.random_delay_ms / 1000)
             else:
                 # Client waits for host START
-                incoming = self.comms.receive_react(room=self.room, timeout=20000)
+                incoming = await self.comms.receive_react(room=self.room)
                 if incoming:
                     self.waiting_for_host_to_start = False
                     print(
                         f"Received REACT START from host in {self.room.name} with time {incoming}ms"
                     )
                     self.random_delay_ms = incoming
+                    self.cleared_background = False
                     await asyncio.sleep(self.random_delay_ms / 1000)
                 else:
                     print(
@@ -126,6 +149,8 @@ class MultiPlayerReactionGameGame(Focusable):
         self.reacted_in = f"{elapsed}"
         self.react_set = False
 
+        print(f"Reaction time: {self.reacted_in}ms")
+
         if self.multiplayer:
             if self.is_host:
                 # Host also records own time
@@ -133,32 +158,9 @@ class MultiPlayerReactionGameGame(Focusable):
             else:
                 # Client → host
                 self.comms.send_react_time(self.room, elapsed)
+                asyncio.create_task(self.listen_for_scores())
 
     def update(self, delta: int) -> bool:
-        if self.listen_for_scores:
-            incoming = self.comms.receive_scores(1500)
-            if incoming:
-                sender, msg = incoming
-                parts = msg.split()
-                tag = parts[1]
-                if tag == "TIME" and self.is_host:
-                    # Host collects everyone’s TIME
-                    t = int(parts[3])
-                    self.results[sender] = t
-                    # once everyone (host + players) have sent
-                    expected = len(self.room.players) + 1
-                    if len(self.results) == expected:
-                        # broadcast final scoreboard
-                        for p in [self.comms.mac] + self.room.players:
-                            self.comms.send_results(p, self.room, self.results)
-
-                elif tag == "RESULT" and not self.is_host:
-                    # Client receives final RESULTS
-                    raw = parts[3]
-                    for pair in raw.split(","):
-                        mac_hex, tstr = pair.split(":")
-                        self.results[bytes.fromhex(mac_hex)] = int(tstr)
-
         return True
 
     def draw(self, ctx) -> None:
@@ -176,12 +178,22 @@ class MultiPlayerReactionGameGame(Focusable):
                 ctx.rgb(0.5, 0, 0.5).arc(0, 0, 40, 0, 2 * math.pi, True).fill()
 
         if self.multiplayer and self.results:
-            y = 100
+            y = 38
+            height_of_box = 22 * len(self.results) + 10
+
+            ctx.rgb(0.2, 0.2, 0.2).round_rectangle(
+                -60,
+                20,
+                120,
+                height_of_box,
+                8,
+            ).fill()
+
             for mac, t in self.results.items():
-                prefix = "You" if mac == self.comms.mac else mac.hex()[:4]
-                ctx.font_size = 18
-                ctx.rgb(1, 1, 1).move_to(-60, y).text(f"{prefix}: {t}ms")
-                y += 24
+                prefix = "You" if mac == self.comms.mac else mac.hex()[6:]
+                ctx.font_size = 20
+                ctx.rgb(1, 1, 1).move_to(0, y).text(f"{prefix}: {t}ms")
+                y += 22
 
         elif self.waiting_for_host_to_start and not self.is_host:
             self.drawing.draw_radial_box(

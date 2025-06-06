@@ -17,6 +17,7 @@ class Reactz(App):
     focus: Focusable | None = None
     menuTask: asyncio.Task | None = None
     cleared: bool = False
+    request_fast_updates: bool = False  # for SASPPU firmware
 
     def __init__(self):
         self.button_states = Buttons(self)

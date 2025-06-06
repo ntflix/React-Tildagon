@@ -8,6 +8,14 @@ The time difference between the event and the player's reaction time is calculat
 
 On multiplayer, the player with the lowest time difference wins.
 
+> [!IMPORTANT]  
+> `aioespnow` is not included (yet) in Tildagon OS. (There is a PR to get this added to Tildagon OS.)
+> In the meantime, install `aioespnow` manually on your Tildagon by running the following command:
+>
+> ```bash
+> mpremote install aioespnow
+> ```
+
 ## Future
 
 - Have 'game rooms' set up ("would you like to join [randomly generated name] game") so multiple Tildagons in the same vicinity can have separate games

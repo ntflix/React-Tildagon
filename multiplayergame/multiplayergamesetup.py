@@ -57,7 +57,7 @@ class MultiPlayerReactionGameSetup(Focusable):
             return
         if button == "DOWN" and self.gameType == GameType.JOINING:
             if self.room:
-                self.join_room()
+                asyncio.create_task(self.join_room())
         elif button == "DOWN" and self.gameType == GameType.HOSTING:
             if self.room and len(self.room.players) > 0:
                 if self.joining_task:
@@ -74,7 +74,7 @@ class MultiPlayerReactionGameSetup(Focusable):
         asyncio.create_task(self.reset_comms())
         await asyncio.sleep(1)
         if self.gameType == GameType.HOSTING:
-            self.joining_task = asyncio.create_task(self.adverstise_room())
+            self.joining_task = asyncio.create_task(self.advertise_room())
         elif self.gameType == GameType.JOINING:
             self.joining_task = None
             # self.broadcast_task = asyncio.create_task(self.comms.broadcast("JOIN"))
@@ -92,14 +92,17 @@ class MultiPlayerReactionGameSetup(Focusable):
         )
         asyncio.create_task(self.game.start())
 
-    async def adverstise_room(self) -> None:
+    async def advertise_room(self) -> None:
         assert self.room is not None, "Room must be initialized before advertising"
         print(f"Advertising room: {self.room.name}")
         while True:
             try:
-                self.comms.broadcast(
+                await self.comms.broadcast(
                     f"HOST {self.room.name}",
-                    on_join=self.add_player_to_room,
+                    broadcast_async=False,
+                )
+                await self.comms.receive_join_requests(
+                    self.add_player_to_room,
                 )
             except asyncio.CancelledError:
                 print("Advertise room cancelled")
@@ -113,7 +116,7 @@ class MultiPlayerReactionGameSetup(Focusable):
         print("Listening for rooms...")
         no_message_received = True
         while no_message_received:
-            receive = self.comms.receive()
+            receive = await self.comms.receive()
             if receive:
                 host, msg = receive
                 no_message_received = False
@@ -131,10 +134,10 @@ class MultiPlayerReactionGameSetup(Focusable):
             if self.room.name == "banana banana":
                 self.color_override = (0.9, 0.9, 0)
 
-    def join_room(self) -> None:
+    async def join_room(self) -> None:
         assert self.room is not None, "Room must be initialized before joining"
         print(f"Joining room: {self.room.name}")
-        self.comms.join_room(self.room, self.on_joined)
+        await self.comms.join_room(self.room, self.on_joined)
         # self.gameType = GameType.PLAYINGMULTIPLAYER
 
     def on_joined(self) -> None:
