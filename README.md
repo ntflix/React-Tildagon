@@ -2,6 +2,8 @@
 
 > A PoC multiplayer game for the [Tildagon](https://tildagon.badge.emfcamp.org/).
 
+An example of using [aioespnow](https://docs.micropython.org/en/latest/library/espnow.html) to achieve inter-badge direct communication without the need for a WiFi AP.
+
 A single or multiplayer game where the player waits a random time and then has to react as quickly as possible to a visual cue (like a color change or a button appearing).
 
 The time difference between the event and the player's reaction time is calculated. The lower the time difference, the better the score.
